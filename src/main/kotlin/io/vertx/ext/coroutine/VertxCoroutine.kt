@@ -3,12 +3,12 @@ package io.vertx.ext.coroutine
 import io.vertx.core.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.Channel
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.experimental.CoroutineContext
 
 /**
  * Created by stream.
  */
-
 
 /**
  * Receive a single event from a handler synchronously.
@@ -17,6 +17,14 @@ import kotlin.coroutines.experimental.CoroutineContext
 fun <T> asyncEvent(block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext()) {
   suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
     block(Handler { event -> cont.resume(event) })
+  }
+}
+
+fun <T> asyncEvent(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext()) {
+  withTimeout(timeout, unit) {
+    suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
+      block(Handler { event -> cont.resume(event) })
+    }
   }
 }
 
@@ -30,6 +38,17 @@ fun <T> asyncResult(block: (h: Handler<AsyncResult<T>>) -> Unit) = async(vertxCo
       if (asyncResult.succeeded()) cont.resume(asyncResult.result())
       else cont.resumeWithException(asyncResult.cause())
     })
+  }
+}
+
+fun <T> asyncResult(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<AsyncResult<T>>) -> Unit) = async(vertxCoroutineContext()) {
+  withTimeout(timeout, unit) {
+    suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
+      block(Handler { asyncResult ->
+        if (asyncResult.succeeded()) cont.resume(asyncResult.result())
+        else cont.resumeWithException(asyncResult.cause())
+      })
+    }
   }
 }
 
@@ -96,6 +115,8 @@ fun runVertxCoroutine(block: suspend CoroutineScope.() -> Unit) {
 
 interface ReceiverAdaptor<out T> {
   suspend fun receive(): T
+
+  suspend fun receive(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): T
 }
 
 class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val channel: Channel<T> = Channel()) : Handler<T>, ReceiverAdaptor<T> {
@@ -106,19 +127,27 @@ class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val 
     }
   }
 
-  override suspend fun receive(): T {
-    return channel.receive()
+  override suspend fun receive(): T = channel.receive()
+
+  override suspend fun receive(timeout: Long, unit: TimeUnit): T = withTimeout(timeout, unit) {
+    channel.receive()
   }
 }
 
 private const val VERTX_COROUTINE_DISPATCHER = "__vertx-kotlin-coroutine:dispatcher"
+private var vertx: Vertx? = null
+
+//you can init vertx instance if you running Vert.x by embed style.
+fun initVertxToCoroutine(v: Vertx) {
+  vertx = v
+}
 
 /**
  * Get Kotlin CoroutineContext, this coroutine should be one instance for per context.
  * @return CoroutineContext
  */
-internal fun vertxCoroutineContext(): CoroutineContext {
-  val vertxContext = Vertx.currentContext()
+fun vertxCoroutineContext(): CoroutineContext {
+  val vertxContext = vertx?.orCreateContext ?: Vertx.currentContext()
   requireNotNull(vertxContext, { "Do not in the vertx context" })
   require(vertxContext.isEventLoopContext, { "Not on the vertx eventLoop." })
   var vertxContextDispatcher = vertxContext.get<CoroutineContext>(VERTX_COROUTINE_DISPATCHER)
@@ -139,7 +168,7 @@ private class VertxContextDispatcher(val vertxContext: Context, val eventLoop: T
 /**
  * Remove the scheduler for the current context
  */
-internal fun removeVertxCoroutineContext() {
-  val vertxContext = Vertx.currentContext()
+fun removeVertxCoroutineContext() {
+  val vertxContext = vertx?.orCreateContext ?: Vertx.currentContext()
   vertxContext?.remove(VERTX_COROUTINE_DISPATCHER)
 }

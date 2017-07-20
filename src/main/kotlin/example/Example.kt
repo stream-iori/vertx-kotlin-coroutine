@@ -12,7 +12,6 @@ import io.vertx.ext.coroutine.*
  */
 
 class ExampleVerticle : CoroutineVerticle() {
-
   override fun start() {
     //make all the handler under coroutine.
     runVertxCoroutine {
@@ -85,10 +84,16 @@ class ExampleVerticle : CoroutineVerticle() {
       }
     }.listen(8081)
   }
-
 }
 
 fun main(args: Array<String>) {
   val vertx = Vertx.vertx()
   vertx.deployVerticle(ExampleVerticle())
+
+  //embed
+  initVertxToCoroutine(vertx)
+  runVertxCoroutine {
+    asyncEvent<Long> { h -> vertx.setTimer(1000L, h) }.await()
+    println("will be fired in 1s.")
+  }
 }
