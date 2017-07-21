@@ -135,7 +135,7 @@ class VertxCoroutineTest {
   fun testExecSyncMethodWithNoParamsAndHandlerWithReturnTimeout(testContext: TestContext) = runVertxCoroutine {
     val async = testContext.async()
     val res = asyncResult<String>(500) { h -> ai.methodWithNoParamsAndHandlerWithReturnTimeout(h, 1000) }.await()
-    Assert.assertSame(Unit, res)
+    Assert.assertNull(res)
     async.complete()
   }
 
@@ -240,7 +240,7 @@ class VertxCoroutineTest {
       val adaptor3 = streamAdaptor<Message<String>>()
       eb.consumer<String>(ADDRESS3).handler(adaptor3)
       val received3 = adaptor3.receive(100)
-      Assert.assertSame(received3, Unit)
+      Assert.assertNull(received3)
 
       // Try underlying channel
       val channel = adaptor1.channel

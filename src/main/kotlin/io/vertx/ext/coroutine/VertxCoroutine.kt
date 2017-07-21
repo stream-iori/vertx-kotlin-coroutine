@@ -4,7 +4,9 @@ import io.vertx.core.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.Channel
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.experimental.Continuation
 import kotlin.coroutines.experimental.CoroutineContext
+import kotlin.coroutines.experimental.suspendCoroutine
 
 /**
  * Created by stream.
@@ -20,14 +22,19 @@ fun <T> asyncEvent(block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext
   }
 }
 
-fun <T> asyncEvent(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext()) {
+/**
+ * TODO
+ */
+fun <T> asyncEvent(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<T?>) -> Unit) = async(vertxCoroutineContext()) {
   withTimeout(timeout, unit) {
     try {
-      suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
+      suspendCancellableCoroutine { cont: CancellableContinuation<T?> ->
         block(Handler { event -> cont.resume(event) })
       }
     } catch (e: CancellationException) {
-      //skip
+      suspendCoroutine { cont: Continuation<T?> ->
+        block(Handler { cont.resume(null) })
+      }
     }
   }
 }
@@ -45,17 +52,22 @@ fun <T> asyncResult(block: (h: Handler<AsyncResult<T>>) -> Unit) = async(vertxCo
   }
 }
 
-fun <T> asyncResult(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<AsyncResult<T>>) -> Unit) = async(vertxCoroutineContext()) {
+/**
+ * TODO
+ */
+fun <T> asyncResult(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<AsyncResult<T?>>) -> Unit) = async(vertxCoroutineContext()) {
   withTimeout(timeout, unit) {
     try {
-      suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
+      suspendCancellableCoroutine { cont: CancellableContinuation<T?> ->
         block(Handler { asyncResult ->
           if (asyncResult.succeeded()) cont.resume(asyncResult.result())
           else cont.resumeWithException(asyncResult.cause())
         })
       }
     } catch (e: CancellationException) {
-      //skip
+      suspendCoroutine { cont: Continuation<T?> ->
+        block(Handler { cont.resume(null) })
+      }
     }
   }
 }
@@ -122,9 +134,15 @@ fun runVertxCoroutine(block: suspend CoroutineScope.() -> Unit) {
 }
 
 interface ReceiverAdaptor<out T> {
+  /**
+   * TODO
+   */
   suspend fun receive(): T
 
-  suspend fun receive(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): Any?
+  /**
+   * TODO
+   */
+  suspend fun receive(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): T?
 }
 
 class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val channel: Channel<T> = Channel()) : Handler<T>, ReceiverAdaptor<T> {
@@ -137,12 +155,18 @@ class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val 
 
   override suspend fun receive(): T = channel.receive()
 
-  override suspend fun receive(timeout: Long, unit: TimeUnit): Any? = withTimeout(timeout, unit) {
-    try {
-      channel.receive()
-    } catch (e:CancellationException) {
-      //skip
+  override suspend fun receive(timeout: Long, unit: TimeUnit): T? {
+    val future: Future<T?> = Future.future()
+    withTimeout(timeout, unit) {
+      var result: T? = null
+      try {
+        result = channel.receive()
+      } catch (e: CancellationException) {
+        //skip
+      }
+      future.complete(result)
     }
+    return future.await()
   }
 }
 

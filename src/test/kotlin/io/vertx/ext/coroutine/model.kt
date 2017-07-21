@@ -28,7 +28,7 @@ interface AsyncInterface {
 
   fun methodThatFails(foo: String, resultHandler: Handler<AsyncResult<String>>)
 
-  fun methodWithNoParamsAndHandlerWithReturnTimeout(resultHandler: Handler<AsyncResult<String>>, timeout: Long): String
+  fun methodWithNoParamsAndHandlerWithReturnTimeout(resultHandler: Handler<AsyncResult<String?>>, timeout: Long): String
 }
 
 class ReturnedInterfaceImpl(private val vertx: Vertx) : ReturnedInterface {
@@ -69,7 +69,7 @@ class AsyncInterfaceImpl(private val vertx: Vertx) : AsyncInterface {
     vertx.runOnContext { resultHandler.handle(Future.failedFuture<String>(VertxException(foo))) }
   }
 
-  override fun methodWithNoParamsAndHandlerWithReturnTimeout(resultHandler: Handler<AsyncResult<String>>, timeout: Long): String {
+  override fun methodWithNoParamsAndHandlerWithReturnTimeout(resultHandler: Handler<AsyncResult<String?>>, timeout: Long): String {
     try {
       Thread.sleep(timeout)
     } catch (e: InterruptedException) {
