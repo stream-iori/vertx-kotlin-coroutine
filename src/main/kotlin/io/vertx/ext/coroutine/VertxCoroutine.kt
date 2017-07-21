@@ -23,7 +23,10 @@ fun <T> asyncEvent(block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext
 }
 
 /**
- * TODO
+ * Receive a single event from a handler synchronously  by specific timeout.
+ * The coroutine will be blocked until the event occurs or timeout, this action do not block vertx's eventLoop.
+ * @param timeout
+ * @return object or null if timeout
  */
 fun <T> asyncEvent(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<T?>) -> Unit) = async(vertxCoroutineContext()) {
   withTimeout(timeout, unit) {
@@ -53,7 +56,10 @@ fun <T> asyncResult(block: (h: Handler<AsyncResult<T>>) -> Unit) = async(vertxCo
 }
 
 /**
- * TODO
+ * Invoke an asynchronous operation and obtain the result synchronous by specific timeout.
+ * The coroutine will be blocked until the event occurs or timeout, this action do not block vertx's eventLoop.
+ * @param timeout
+ * @return object or null if timeout
  */
 fun <T> asyncResult(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<AsyncResult<T?>>) -> Unit) = async(vertxCoroutineContext()) {
   withTimeout(timeout, unit) {
@@ -135,12 +141,14 @@ fun runVertxCoroutine(block: suspend CoroutineScope.() -> Unit) {
 
 interface ReceiverAdaptor<out T> {
   /**
-   * TODO
+   * Receive a object from channel.
    */
   suspend fun receive(): T
 
   /**
-   * TODO
+   * Receive a object from channel with specific timeout.
+   * @param timeout
+   * @return object or null if timeout
    */
   suspend fun receive(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): T?
 }
@@ -158,13 +166,11 @@ class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val 
   override suspend fun receive(timeout: Long, unit: TimeUnit): T? {
     val future: Future<T?> = Future.future()
     withTimeout(timeout, unit) {
-      var result: T? = null
       try {
-        result = channel.receive()
+        future.complete(channel.receive())
       } catch (e: CancellationException) {
-        //skip
+        future.complete(null)
       }
-      future.complete(result)
     }
     return future.await()
   }

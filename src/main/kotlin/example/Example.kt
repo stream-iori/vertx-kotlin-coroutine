@@ -13,12 +13,13 @@ import io.vertx.ext.coroutine.*
 
 fun main(args: Array<String>) {
   val vertx = Vertx.vertx()
-    //vertx.deployVerticle(ExampleVerticle())
+  vertx.deployVerticle(ExampleVerticle())
 
-  //embed
+  //embed style
   initVertxToCoroutine(vertx)
   runVertxCoroutine {
     asyncEvent<Long> { h -> vertx.setTimer(1000L, h) }.await()
+    println("fired by embed vert.x")
   }
 }
 
@@ -42,7 +43,7 @@ class ExampleVerticle : CoroutineVerticle() {
 
   //asyncResult
   private suspend fun syncResultExample() {
-    val consumer = vertx.eventBus().localConsumer<String>("someAddress")
+    val consumer = vertx.eventBus().localConsumer<String>("someAddressA")
     consumer.handler { message ->
       println("consumer receive message ${message.body()}")
       message.reply("pong")
@@ -51,7 +52,7 @@ class ExampleVerticle : CoroutineVerticle() {
     asyncResult<Void> { h -> consumer.completionHandler(h) }.await()
 
     //send message and wait reply synchronously
-    val reply = asyncResult<Message<String>> { h -> vertx.eventBus().send("someAddress", "ping", h) }.await()
+    val reply = asyncResult<Message<String>> { h -> vertx.eventBus().send("someAddressA", "ping", h) }.await()
     println("Receive reply ${reply.body()}")
   }
 
