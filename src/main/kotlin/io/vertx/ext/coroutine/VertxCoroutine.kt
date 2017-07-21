@@ -22,8 +22,12 @@ fun <T> asyncEvent(block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext
 
 fun <T> asyncEvent(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext()) {
   withTimeout(timeout, unit) {
-    suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
-      block(Handler { event -> cont.resume(event) })
+    try {
+      suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
+        block(Handler { event -> cont.resume(event) })
+      }
+    } catch (e: CancellationException) {
+      //skip
     }
   }
 }
@@ -43,11 +47,15 @@ fun <T> asyncResult(block: (h: Handler<AsyncResult<T>>) -> Unit) = async(vertxCo
 
 fun <T> asyncResult(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<AsyncResult<T>>) -> Unit) = async(vertxCoroutineContext()) {
   withTimeout(timeout, unit) {
-    suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
-      block(Handler { asyncResult ->
-        if (asyncResult.succeeded()) cont.resume(asyncResult.result())
-        else cont.resumeWithException(asyncResult.cause())
-      })
+    try {
+      suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
+        block(Handler { asyncResult ->
+          if (asyncResult.succeeded()) cont.resume(asyncResult.result())
+          else cont.resumeWithException(asyncResult.cause())
+        })
+      }
+    } catch (e: CancellationException) {
+      //skip
     }
   }
 }
@@ -107,8 +115,8 @@ fun runVertxCoroutine(block: suspend CoroutineScope.() -> Unit) {
   launch(vertxCoroutineContext()) {
     try {
       block()
-    } finally {
-      //TODO try to cancel this coroutine for example vertx.cancel(timerID)
+    } catch (e: CancellationException) {
+      //skip
     }
   }
 }
@@ -116,7 +124,7 @@ fun runVertxCoroutine(block: suspend CoroutineScope.() -> Unit) {
 interface ReceiverAdaptor<out T> {
   suspend fun receive(): T
 
-  suspend fun receive(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): T
+  suspend fun receive(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): Any?
 }
 
 class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val channel: Channel<T> = Channel()) : Handler<T>, ReceiverAdaptor<T> {
@@ -129,8 +137,12 @@ class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val 
 
   override suspend fun receive(): T = channel.receive()
 
-  override suspend fun receive(timeout: Long, unit: TimeUnit): T = withTimeout(timeout, unit) {
-    channel.receive()
+  override suspend fun receive(timeout: Long, unit: TimeUnit): Any? = withTimeout(timeout, unit) {
+    try {
+      channel.receive()
+    } catch (e:CancellationException) {
+      //skip
+    }
   }
 }
 

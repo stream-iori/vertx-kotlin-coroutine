@@ -1,9 +1,6 @@
 package io.vertx.ext.coroutine
 
-import io.vertx.core.AsyncResult
-import io.vertx.core.Future
-import io.vertx.core.Handler
-import io.vertx.core.Vertx
+import io.vertx.core.*
 
 /**
  * Created by stream.
@@ -69,7 +66,7 @@ class AsyncInterfaceImpl(private val vertx: Vertx) : AsyncInterface {
   }
 
   override fun methodThatFails(foo: String, resultHandler: Handler<AsyncResult<String>>) {
-    vertx.runOnContext { resultHandler.handle(Future.failedFuture<String>(Exception(foo))) }
+    vertx.runOnContext { resultHandler.handle(Future.failedFuture<String>(VertxException(foo))) }
   }
 
   override fun methodWithNoParamsAndHandlerWithReturnTimeout(resultHandler: Handler<AsyncResult<String>>, timeout: Long): String {
@@ -78,7 +75,6 @@ class AsyncInterfaceImpl(private val vertx: Vertx) : AsyncInterface {
     } catch (e: InterruptedException) {
       //
     }
-
     vertx.runOnContext { resultHandler.handle(Future.succeededFuture("wibble")) }
     return "flooble"
   }
