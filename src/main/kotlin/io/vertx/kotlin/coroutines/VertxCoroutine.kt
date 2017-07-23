@@ -18,9 +18,7 @@ import kotlin.coroutines.experimental.suspendCoroutine
  */
 fun <T> asyncEvent(block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext()) {
   try {
-    suspendCoroutine { cont: Continuation<T> ->
-      block(Handler { event -> cont.resume(event) })
-    }
+    suspendCoroutine { cont: Continuation<T> -> block(Handler { event -> cont.resume(event) }) }
   } catch (t: Throwable) {
     throw VertxException(t)
   }
@@ -35,9 +33,7 @@ fun <T> asyncEvent(block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext
 fun <T> asyncEvent(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block: (h: Handler<T?>) -> Unit) = async(vertxCoroutineContext()) {
   withTimeout(timeout, unit) {
     try {
-      suspendCancellableCoroutine { cont: CancellableContinuation<T?> ->
-        block(Handler { event -> cont.resume(event) })
-      }
+      suspendCancellableCoroutine { cont: CancellableContinuation<T?> -> block(Handler { event -> cont.resume(event) }) }
     } catch (e: CancellationException) {
       suspendCoroutine { cont: Continuation<T?> ->
         block(Handler { cont.resume(null) })
@@ -81,9 +77,7 @@ fun <T> asyncResult(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block
         })
       }
     } catch (e: CancellationException) {
-      suspendCoroutine { cont: Continuation<T?> ->
-        block(Handler { cont.resume(null) })
-      }
+      suspendCoroutine { cont: Continuation<T?> -> block(Handler { cont.resume(null) }) }
     } catch (t: Throwable) {
       throw VertxException(t)
     }
@@ -168,9 +162,7 @@ interface ReceiverAdaptor<out T> {
 class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val channel: Channel<T> = Channel()) : Handler<T>, ReceiverAdaptor<T> {
 
   override fun handle(event: T) {
-    launch(coroutineContext) {
-      channel.send(event)
-    }
+    launch(coroutineContext) { channel.send(event) }
   }
 
   override suspend fun receive(): T = channel.receive()

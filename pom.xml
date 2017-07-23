@@ -111,7 +111,6 @@
                 <arg>-Xcoroutines=enable</arg>
               </args>
               <sourceDirs>
-                <source>src/main/java</source>
                 <source>src/main/kotlin</source>
               </sourceDirs>
             </configuration>
