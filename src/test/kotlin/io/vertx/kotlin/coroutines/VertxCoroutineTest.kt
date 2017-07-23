@@ -1,4 +1,4 @@
-package io.vertx.ext.coroutine
+package io.vertx.kotlin.coroutines
 
 import io.vertx.core.Vertx
 import io.vertx.core.VertxException

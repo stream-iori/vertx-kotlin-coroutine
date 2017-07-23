@@ -1,4 +1,4 @@
-package io.vertx.ext.coroutine
+package io.vertx.kotlin.coroutines
 
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future

@@ -5,7 +5,7 @@ import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpServer
-import io.vertx.ext.coroutine.*
+import io.vertx.kotlin.coroutines.*
 
 /**
  * Created by stream.
@@ -15,7 +15,7 @@ fun main(args: Array<String>) {
   val vertx = Vertx.vertx()
   vertx.deployVerticle(ExampleVerticle())
 
-  //embed style
+  //embed style with out extends CoroutineVerticle, working on Main method directly.
   attachVertxToCoroutine(vertx)
   runVertxCoroutine {
     asyncEvent<Long> { h -> vertx.setTimer(1000L, h) }.await()
