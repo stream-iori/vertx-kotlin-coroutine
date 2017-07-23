@@ -16,7 +16,7 @@ fun main(args: Array<String>) {
   vertx.deployVerticle(ExampleVerticle())
 
   //embed style
-  initVertxToCoroutine(vertx)
+  attachVertxToCoroutine(vertx)
   runVertxCoroutine {
     asyncEvent<Long> { h -> vertx.setTimer(1000L, h) }.await()
     println("fired by embed vert.x")

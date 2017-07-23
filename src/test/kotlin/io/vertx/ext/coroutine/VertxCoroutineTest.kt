@@ -34,7 +34,7 @@ class VertxCoroutineTest {
   @Before
   fun before() {
     vertx = rule.vertx()
-    initVertxToCoroutine(vertx)
+    attachVertxToCoroutine(vertx)
     ai = AsyncInterfaceImpl(vertx)
   }
 
@@ -158,10 +158,9 @@ class VertxCoroutineTest {
     } catch (e: Exception) {
       Assert.assertTrue(e is VertxException)
       val ve = e as VertxException
-      Assert.assertEquals("oranges", ve.message)
+      Assert.assertEquals("oranges", ve.cause?.message)
       async.complete()
     }
-
   }
 
   @Test

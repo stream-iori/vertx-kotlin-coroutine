@@ -17,8 +17,12 @@ import kotlin.coroutines.experimental.suspendCoroutine
  * The coroutine will be blocked until the event occurs, this action do not block vertx's eventLoop.
  */
 fun <T> asyncEvent(block: (h: Handler<T>) -> Unit) = async(vertxCoroutineContext()) {
-  suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
-    block(Handler { event -> cont.resume(event) })
+  try {
+    suspendCoroutine { cont: Continuation<T> ->
+      block(Handler { event -> cont.resume(event) })
+    }
+  } catch (t: Throwable) {
+    throw VertxException(t)
   }
 }
 
@@ -38,6 +42,8 @@ fun <T> asyncEvent(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block:
       suspendCoroutine { cont: Continuation<T?> ->
         block(Handler { cont.resume(null) })
       }
+    } catch (t: Throwable) {
+      throw VertxException(t)
     }
   }
 }
@@ -47,11 +53,15 @@ fun <T> asyncEvent(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block:
  * The coroutine will be blocked until the event occurs, this action do not block vertx's eventLoop.
  */
 fun <T> asyncResult(block: (h: Handler<AsyncResult<T>>) -> Unit) = async(vertxCoroutineContext()) {
-  suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
-    block(Handler { asyncResult ->
-      if (asyncResult.succeeded()) cont.resume(asyncResult.result())
-      else cont.resumeWithException(asyncResult.cause())
-    })
+  try {
+    suspendCoroutine { cont: Continuation<T> ->
+      block(Handler { asyncResult ->
+        if (asyncResult.succeeded()) cont.resume(asyncResult.result())
+        else cont.resumeWithException(asyncResult.cause())
+      })
+    }
+  } catch (t: Throwable) {
+    throw VertxException(t)
   }
 }
 
@@ -74,6 +84,8 @@ fun <T> asyncResult(timeout: Long, unit: TimeUnit = TimeUnit.MILLISECONDS, block
       suspendCoroutine { cont: Continuation<T?> ->
         block(Handler { cont.resume(null) })
       }
+    } catch (t: Throwable) {
+      throw VertxException(t)
     }
   }
 }
@@ -118,8 +130,8 @@ fun <T> Deferred<T>.asFuture(): Future<T> {
   invokeOnCompletion {
     try {
       future.complete(getCompleted())
-    } catch (exception: Exception) {
-      future.fail(exception)
+    } catch (t: Throwable) {
+      future.fail(VertxException(t))
     }
   }
   return future
@@ -134,7 +146,7 @@ fun runVertxCoroutine(block: suspend CoroutineScope.() -> Unit) {
     try {
       block()
     } catch (e: CancellationException) {
-      //skip
+      //skip this exception for coroutine cancel
     }
   }
 }
@@ -170,6 +182,8 @@ class HandlerReceiverAdaptorImpl<T>(val coroutineContext: CoroutineContext, val 
         future.complete(channel.receive())
       } catch (e: CancellationException) {
         future.complete(null)
+      } catch (t: Throwable) {
+        future.fail(VertxException(t))
       }
     }
     return future.await()
@@ -180,7 +194,7 @@ private const val VERTX_COROUTINE_DISPATCHER = "__vertx-kotlin-coroutine:dispatc
 private var vertx: Vertx? = null
 
 //you can init vertx instance if you running Vert.x by embed style.
-fun initVertxToCoroutine(v: Vertx) {
+fun attachVertxToCoroutine(v: Vertx) {
   vertx = v
 }
 
