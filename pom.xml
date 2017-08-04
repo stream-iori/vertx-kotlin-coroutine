@@ -10,8 +10,7 @@
     <version>10</version>
   </parent>
 
-  <groupId>vertx-kotlin-coroutine</groupId>
-  <artifactId>io.vertx</artifactId>
+  <artifactId>vertx-kotlin-coroutine</artifactId>
   <version>3.5.0-SNAPSHOT</version>
 
   <properties>
