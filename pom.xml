@@ -71,6 +71,9 @@
   </dependencies>
 
   <build>
+    <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
+    <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
+
     <pluginManagement>
       <plugins>
         <plugin>
@@ -109,9 +112,6 @@
               <args>
                 <arg>-Xcoroutines=enable</arg>
               </args>
-              <sourceDirs>
-                <source>src/main/kotlin</source>
-              </sourceDirs>
             </configuration>
           </execution>
           <execution>
